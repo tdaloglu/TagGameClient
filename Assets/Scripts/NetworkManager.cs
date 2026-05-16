@@ -2,6 +2,20 @@ using UnityEngine;
 using NativeWebSocket;
 using System.Text;
 
+[System.Serializable]
+public class ClientMessage
+{
+    public string type;
+    public string username;
+}
+
+[System.Serializable]
+public class ServerMessage
+{
+    public string type;
+    public string message;
+}
+
 public class NetworkManager : MonoBehaviour
 {
     WebSocket websocket;
@@ -11,24 +25,26 @@ public class NetworkManager : MonoBehaviour
 
         websocket.OnOpen += () =>
         {
-            Debug.Log("✅ Connected to the server!");
-            SendInitialMessage();
+            Debug.Log("Connected to the server!");
+            SendLoginMessage();
         };
 
         websocket.OnError += (e) =>
         {
-            Debug.Log("❌ Error: " + e);
+            Debug.Log("Error: " + e);
         };
 
         websocket.OnClose += (e) =>
         {
-            Debug.Log("🔴 Connection closed!");
+            Debug.Log("Connection closed!");
         };
 
         websocket.OnMessage += (bytes) =>
         {
-            string message = Encoding.UTF8.GetString(bytes);
-            Debug.Log("📩 Message received from server: " + message);
+            string jsonString = Encoding.UTF8.GetString(bytes);
+
+            ServerMessage response = JsonUtility.FromJson<ServerMessage>(jsonString);
+            Debug.Log($"Server says: [{response.type}] {response.message}");
         };
 
         await websocket.Connect();
@@ -41,11 +57,17 @@ public class NetworkManager : MonoBehaviour
         #endif
     }
 
-    async void SendInitialMessage()
+    async void SendLoginMessage()
     {
         if (websocket.State == WebSocketState.Open)
         {
-            await websocket.SendText("Hello from Unity!");
+            ClientMessage msg = new ClientMessage();
+            msg.type = "login";
+            msg.username = "Player_01";
+
+            string jsonMessage = JsonUtility.ToJson(msg);
+
+            await websocket.SendText(jsonMessage);
         }
     }
 
