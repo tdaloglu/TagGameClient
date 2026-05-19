@@ -7,6 +7,7 @@ public class ClientMessage
 {
     public string type;
     public string username;
+    public string roomId;
 }
 
 [System.Serializable]
@@ -14,6 +15,8 @@ public class ServerMessage
 {
     public string type;
     public string message;
+    public string roomId;
+    public string username;
 }
 
 public class NetworkManager : MonoBehaviour
@@ -62,7 +65,7 @@ public class NetworkManager : MonoBehaviour
         if (websocket.State == WebSocketState.Open)
         {
             ClientMessage msg = new ClientMessage();
-            msg.type = "login";
+            msg.type = "create_room";
             msg.username = "Player_01";
 
             string jsonMessage = JsonUtility.ToJson(msg);
