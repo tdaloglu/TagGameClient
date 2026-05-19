@@ -1,6 +1,8 @@
 using UnityEngine;
 using NativeWebSocket;
 using System.Text;
+using TMPro;
+using System.Data;
 
 [System.Serializable]
 public class ClientMessage
@@ -23,13 +25,18 @@ public class NetworkManager : MonoBehaviour
 {
     WebSocket websocket;
 
+    [Header("UI Elements")]
+    public TMP_InputField usernameInput;
+    public TMP_InputField roomCodeInput;
+    public TextMeshProUGUI statusText;
+
     async void Start() {
         websocket = new WebSocket("ws://localhost:8080");
 
         websocket.OnOpen += () =>
         {
             Debug.Log("Connected to the server!");
-            SendLoginMessage();
+            UpdateStatus("The server is connected. Please enter your username and create or join a room.");
         };
 
         websocket.OnError += (e) =>
@@ -47,7 +54,16 @@ public class NetworkManager : MonoBehaviour
             string jsonString = Encoding.UTF8.GetString(bytes);
 
             ServerMessage response = JsonUtility.FromJson<ServerMessage>(jsonString);
-            Debug.Log($"Server says: [{response.type}] {response.message}");
+            if (response.type == "room_created" || response.type == "room_joined")
+            {
+                UpdateStatus($"Successful! The Room Code: {response.roomId}\n{response.message}");
+            } else if (response.type == "player_joined")
+            {
+                UpdateStatus($"{response.username} has joined the room!");
+            } else if (response.type == "error")
+            {
+                UpdateStatus($"Error: {response.message}");
+            }
         };
 
         await websocket.Connect();
@@ -60,18 +76,44 @@ public class NetworkManager : MonoBehaviour
         #endif
     }
 
-    async void SendLoginMessage()
+    public async void CreateRoom()
     {
-        if (websocket.State == WebSocketState.Open)
+        if (string.IsNullOrEmpty(usernameInput.text))
         {
-            ClientMessage msg = new ClientMessage();
-            msg.type = "create_room";
-            msg.username = "Player_01";
-
-            string jsonMessage = JsonUtility.ToJson(msg);
-
-            await websocket.SendText(jsonMessage);
+            UpdateStatus("Please enter a username!");
+            return;
         }
+
+        ClientMessage msg = new ClientMessage
+        {
+            type = "create_room",
+            username = usernameInput.text
+        };
+
+        await websocket.SendText(JsonUtility.ToJson(msg));
+    }
+
+    public async void JoinRoom()
+    {
+        if (string.IsNullOrEmpty(usernameInput.text) || string.IsNullOrEmpty(roomCodeInput.text))
+        {
+            UpdateStatus("Please enter a username and a room code!");
+            return;
+        }
+
+        ClientMessage msg = new ClientMessage
+        {
+            type = "join_room",
+            username = usernameInput.text,
+            roomId = roomCodeInput.text
+        };
+        await websocket.SendText(JsonUtility.ToJson(msg));
+    }
+
+    private void UpdateStatus(string message)
+    {
+        if (statusText != null) statusText.text = message;
+        Debug.Log(message);
     }
 
     private async void OnApplicationQuit()
