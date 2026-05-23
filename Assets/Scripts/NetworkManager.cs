@@ -2,7 +2,6 @@ using UnityEngine;
 using NativeWebSocket;
 using System.Text;
 using TMPro;
-using System.Data;
 
 [System.Serializable]
 public class ClientMessage
@@ -23,6 +22,8 @@ public class ServerMessage
 
 public class NetworkManager : MonoBehaviour
 {
+    [Header("Bluetooth Manager")]
+    public BleBeaconManager bleManager;
     WebSocket websocket;
 
     [Header("UI Elements")]
@@ -57,6 +58,12 @@ public class NetworkManager : MonoBehaviour
             if (response.type == "room_created" || response.type == "room_joined")
             {
                 UpdateStatus($"Successful! The Room Code: {response.roomId}\n{response.message}");
+
+                if (bleManager != null)
+                {
+                    bleManager.StartBroadcasting(usernameInput.text);
+                    bleManager.StartScanning();
+                }
             } else if (response.type == "player_joined")
             {
                 UpdateStatus($"{response.username} has joined the room!");
